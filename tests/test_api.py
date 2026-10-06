@@ -148,3 +148,20 @@ def test_delete_scan():
 
     resp = client.delete(f"/scans/{scan_id}", headers=auth_headers(token))
     assert resp.status_code == 204
+
+
+def test_share_link_with_password():
+    token = register_and_login()
+    scan_id = client.post("/scans", json={"title": "Share me", "affected_component": "api"}, headers=auth_headers(token)).json()["id"]
+    share = client.post(f"/scans/{scan_id}/share", json={"password": "share-password"}, headers=auth_headers(token))
+    assert share.status_code == 200
+    share_token = share.json()["share_url"].rsplit("/", 1)[1]
+    assert client.get(f"/share/{share_token}").status_code == 401
+    assert client.get(f"/share/{share_token}?password=share-password").json()["title"] == "Share me"
+
+
+def test_scan_isolation():
+    owner = register_and_login()
+    scan_id = client.post("/scans", json={"title": "Private", "affected_component": "api"}, headers=auth_headers(owner)).json()["id"]
+    other = register_and_login("bob", "bob@example.com")
+    assert client.get(f"/scans/{scan_id}", headers=auth_headers(other)).status_code == 404

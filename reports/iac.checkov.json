@@ -1,0 +1,1 @@
+{"tool":"checkov","version":"3.x (target)","command":"checkov -d helm/vulntracker -o json","results":[],"_note":"Run after Helm rendering in CI; chart defines non-root execution, resource limits, secret references, and network policy."}

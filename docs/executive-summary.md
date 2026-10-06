@@ -1,0 +1,7 @@
+# Executive summary
+
+Before this work, a user who could log in might read another team's vulnerability records, search input could alter database queries, and tokens and secrets were trusted too broadly. That could expose customer security findings and let an attacker impersonate users. The service is now materially safer for a prototype: records are tenant-scoped, database queries are parameterized, authentication accepts only the intended signing method, errors no longer disclose internals, and shared reports use expiring random links with optional password protection.
+
+The top three residual risks are the notification service's unauthenticated webhook administration and arbitrary outbound requests, the legacy service key that needs rotation and secret-manager injection, and SQLite's lack of production-grade concurrency and recovery. These were scoped out because they require service and operational changes rather than a safe one-file patch. Network isolation, restricted egress, and prototype-only use reduce—but do not remove—the exposure.
+
+Recommended next steps are to put the notification service behind authenticated service-to-service access, allowlist and validate webhook destinations, rotate all old credentials, migrate to managed PostgreSQL with tested backups, add rate limiting and audit logs, and run the four security scans on every pull request. Before launch, commission an independent penetration test and verify incident-response procedures with a restore exercise.

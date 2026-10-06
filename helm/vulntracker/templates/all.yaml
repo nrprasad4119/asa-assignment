@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata: {name: vulntracker}
+spec:
+  selector: {app: vulntracker}
+  ports: [{port: 8000, targetPort: 8000}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vulntracker}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: vulntracker}}
+  template:
+    metadata: {labels: {app: vulntracker}}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          ports: [{containerPort: 8000}]
+          env:
+            - name: SECRET_KEY
+              valueFrom: {secretKeyRef: {name: "{{ .Values.secretName }}", key: secret-key}}
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: "{{ .Values.secretName }}", key: database-url}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe: {httpGet: {path: /health, port: 8000}}
+          livenessProbe: {httpGet: {path: /health, port: 8000}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: vulntracker
+}
+spec:
+  podSelector: {matchLabels: {app: vulntracker}}
+  policyTypes: [Ingress, Egress]
+  ingress: [{from: [{namespaceSelector: {matchLabels: {name: ingress}}}], ports: [{protocol: TCP, port: 8000}]}]
+  egress: [{to: [{namespaceSelector: {matchLabels: {name: database}}}]}]
